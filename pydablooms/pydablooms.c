@@ -54,7 +54,7 @@ static int Dablooms_init(Dablooms *self, PyObject *args, PyObject *kwds)
         PyErr_SetString(DabloomsError, "Bloom creation failed: capacity must be greater than zero");
     	return -1;
     }
-    if (error_rate > 1){
+    if (error_rate > 1 || error_rate < 0){
     	PyErr_SetString(DabloomsError, "Bloom creation failed: error_rate must be between 0 and 1");
     	return -1;
     }
