@@ -4,6 +4,8 @@
 
 int Py_ModuleVersion = 1;
 
+static PyObject *DabloomsError;
+
 typedef struct {
     PyObject_HEAD
     scaling_bloom_t *filter;    /* Type-specific fields go here. */
@@ -11,9 +13,12 @@ typedef struct {
 
 static void Dablooms_dealloc(Dablooms *self)
 {
-    free_scaling_bloom(self->filter);
+	if(self->filter)
+		free_scaling_bloom(self->filter);
     self->ob_type->tp_free((PyObject *)self);
 }
+
+static int Dablooms_init(Dablooms *self, PyObject *args, PyObject *kwds);
 
 static PyObject *Dablooms_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
@@ -24,20 +29,38 @@ static PyObject *Dablooms_new(PyTypeObject *type, PyObject *args, PyObject *kwds
     }
     
     self->filter = NULL;
-    
     return (PyObject *) self;
+//    if(! Dablooms_init(self, args, kwds))
+//    	return (PyObject *) self;
+//    else {
+//        PyErr_SetString(PyExc_ZeroDivisionError, "Bloom creation failed");
+//        return NULL;
+//    }
 }
 
 static int Dablooms_init(Dablooms *self, PyObject *args, PyObject *kwds)
 {
-    double error_rate;
-    const char *filepath;
-    unsigned int capacity;
+    double error_rate = 0.1;
+    const char *filepath = "/tmp/bloom.bin";
+    int capacity = 1;
     static char *kwlist[] = {"capacity", "error_rate", "filepath", NULL};
     
     if (! PyArg_ParseTupleAndKeywords(args, kwds, "|ids", kwlist,
                                       &capacity, &error_rate, &filepath)) {
         return -1;
+    }
+
+    if (capacity < 1){
+        PyErr_SetString(DabloomsError, "Bloom creation failed: capacity must be greater than zero");
+    	return -1;
+    }
+    if (error_rate > 1){
+    	PyErr_SetString(DabloomsError, "Bloom creation failed: error_rate must be between 0 and 1");
+    	return -1;
+    }
+    if(!(filepath && strlen(filepath))){
+    	PyErr_SetString(DabloomsError, "Bloom creation failed: filepath required");
+    	return -1;
     }
     
     self->filter = new_scaling_bloom(capacity, error_rate, filepath);
@@ -171,6 +194,7 @@ static PyTypeObject DabloomsType = {
     0,                              /*tp_descr_get*/
     0,                              /*tp_descr_set*/
     0,                              /*tp_dictoffset*/
+//    0,        /*tp_init*/
     (initproc)Dablooms_init,        /*tp_init*/
     0,                              /*tp_alloc*/
     Dablooms_new,                   /*tp_new*/
@@ -220,4 +244,8 @@ PyMODINIT_FUNC initpydablooms(void)
     
     Py_INCREF(&DabloomsType);
     PyModule_AddObject(m, "Dablooms", (PyObject *)&DabloomsType);
+
+    DabloomsError = PyErr_NewException("Dablooms.Error", NULL, NULL);
+    Py_INCREF(DabloomsError);
+    PyModule_AddObject(m, "error", DabloomsError);
 }
