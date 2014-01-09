@@ -14,7 +14,7 @@ typedef struct {
 static void Dablooms_dealloc(Dablooms *self)
 {
 	if(self->filter)
-		free_scaling_bloom(self->filter);
+        free_scaling_bloom(self->filter);
     self->ob_type->tp_free((PyObject *)self);
 }
 
@@ -30,12 +30,6 @@ static PyObject *Dablooms_new(PyTypeObject *type, PyObject *args, PyObject *kwds
     
     self->filter = NULL;
     return (PyObject *) self;
-//    if(! Dablooms_init(self, args, kwds))
-//    	return (PyObject *) self;
-//    else {
-//        PyErr_SetString(PyExc_ZeroDivisionError, "Bloom creation failed");
-//        return NULL;
-//    }
 }
 
 static int Dablooms_init(Dablooms *self, PyObject *args, PyObject *kwds)
@@ -194,7 +188,6 @@ static PyTypeObject DabloomsType = {
     0,                              /*tp_descr_get*/
     0,                              /*tp_descr_set*/
     0,                              /*tp_dictoffset*/
-//    0,        /*tp_init*/
     (initproc)Dablooms_init,        /*tp_init*/
     0,                              /*tp_alloc*/
     Dablooms_new,                   /*tp_new*/
