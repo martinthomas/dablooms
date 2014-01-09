@@ -18,8 +18,6 @@ static void Dablooms_dealloc(Dablooms *self)
     self->ob_type->tp_free((PyObject *)self);
 }
 
-static int Dablooms_init(Dablooms *self, PyObject *args, PyObject *kwds);
-
 static PyObject *Dablooms_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
     Dablooms *self;
@@ -36,7 +34,7 @@ static int Dablooms_init(Dablooms *self, PyObject *args, PyObject *kwds)
 {
     double error_rate = 0.1;
     const char *filepath = "/tmp/bloom.bin";
-    int capacity = 1;
+    int capacity = 1;  // dropped the unsigned modifier to avoid implicit conversion from negative
     static char *kwlist[] = {"capacity", "error_rate", "filepath", NULL};
     
     if (! PyArg_ParseTupleAndKeywords(args, kwds, "|ids", kwlist,
@@ -196,18 +194,36 @@ static PyTypeObject DabloomsType = {
 static PyObject *load_dabloom(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
     Dablooms *self = (Dablooms *)PyObject_New(Dablooms, &DabloomsType);
-    double error_rate;
-    const char *filepath;
-    unsigned int capacity;
+    double error_rate = 0.1;
+    const char *filepath = "/tmp/bloom.bin";
+    int capacity = 1;  // dropped the unsigned modifier to avoid implicit conversion from negative
+    int result = 0;
     static char *kwlist[] = {"capacity", "error_rate", "filepath", NULL};
-    
+
     if (! PyArg_ParseTupleAndKeywords(args, kwds, "|ids", kwlist,
                                       &capacity, &error_rate, &filepath)) {
         return NULL;
     }
-    
-    self->filter = new_scaling_bloom_from_file(capacity, error_rate, filepath);
-    return (PyObject *) self;
+
+    if (capacity < 1){
+        PyErr_SetString(DabloomsError, "Bloom creation failed: capacity must be greater than zero");
+    	result = -1;
+    }
+    else if (error_rate > 1 || error_rate < 0){
+    	PyErr_SetString(DabloomsError, "Bloom creation failed: error_rate must be between 0 and 1");
+    	result = -1;
+    }
+    else if(!(filepath && strlen(filepath))){
+    	PyErr_SetString(DabloomsError, "Bloom creation failed: filepath required");
+    	result = -1;
+    }
+
+    if (!result){
+        self->filter = new_scaling_bloom_from_file(capacity, error_rate, filepath);
+        return (PyObject *) self;
+    }
+    Dablooms_dealloc(self);
+    return NULL;
 }
 
 static PyMethodDef pydablooms_methods[] = {
